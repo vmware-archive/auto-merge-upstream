@@ -22,122 +22,112 @@ import org.springframework.web.client.RestTemplate
 @Controller
 class AutoMergeUpstream {
 
-	def REPOSITORY_DIRECTORY = new File(System.getProperty('java.io.tmpdir'), 'repo')
+  def REPOSITORY_DIRECTORY = new File(System.getProperty('java.io.tmpdir'), 'repo')
 
-	def logger = LoggerFactory.getLogger(this.getClass())
+  def logger = LoggerFactory.getLogger(this.getClass())
 
-	def restTemplate = new RestTemplate()
+  def restTemplate = new RestTemplate()
 
-	@Value('${DOWNSTREAM_URI}')
-	def downstreamUri
+  @Value('${DOWNSTREAM_URI}')
+  def downstreamUri
 
-	@Value('${UPSTREAM_URI}')
-	def upstreamUri
+  @Value('${UPSTREAM_URI}')
+  def upstreamUri
 
-	@Value('${FROM_ADDRESS}')
-	def fromAddress
+  @Value('${FROM_ADDRESS}')
+  def fromAddress
 
-	@Value('${TO_ADDRESS}')
-	def toAddress
+  @Value('${TO_ADDRESS}')
+  def toAddress
 
-	def hostname
+  def hostname
 
-	def username
+  def username
 
-	def password
+  def password
 
-	@Autowired
-	AutoMergeUpstream(@Value('${VCAP_SERVICES}') String services) {
-		def configuration =  new JsonSlurper().parseText(services)
-			.find { it ==~ /^sendgrid.*$/ }.value[0]['credentials']
+  @Autowired
+  AutoMergeUpstream(@Value('${VCAP_SERVICES}') String services) {
+    def configuration =  new JsonSlurper().parseText(services)
+      .find { it ==~ /^sendgrid.*$/ }.value[0]['credentials']
 
-		hostname = configuration['hostname']
-		username = configuration['username']
-		password = configuration['password']
-	}
+    hostname = configuration['hostname']
+    username = configuration['username']
+    password = configuration['password']
+  }
 
-	@RequestMapping(method = RequestMethod.POST, value = '/')
-	ResponseEntity<Void> webhook() {
-		Thread.start { merge() }
-		return new ResponseEntity<>(HttpStatus.OK)
-	}
+  @RequestMapping(method = RequestMethod.POST, value = '/')
+  ResponseEntity<Void> webhook() {
+    Thread.start { merge() }
+    return new ResponseEntity<>(HttpStatus.OK)
+  }
 
-	def merge() {
-		if (!REPOSITORY_DIRECTORY.exists()) {
-			cloneRepository()
-		}
+  def merge() {
+    if (!REPOSITORY_DIRECTORY.exists()) {
+      cloneRepository()
+    }
 
-		updateRemotes()
-		def mergeSuccessful = attemptMerge()
+    updateRemotes()
+    def mergeSuccessful = attemptMerge()
 
-		if (mergeSuccessful) {
-			pushRepository()
-		} else {
-			sendFailureEmail()
-		}
+    if (mergeSuccessful) {
+      pushRepository()
+    } else {
+      sendFailureEmail()
+    }
 
-		logger.info 'Auto-merge complete'
-	}
+    logger.info 'Auto-merge complete'
+  }
 
-	def cloneRepository() {
-		logger.info "Cloning ${sterilizeUri(downstreamUri)}"
+  def cloneRepository() {
+    logger.info "Cloning ${sterilizeUri(downstreamUri)}"
 
-		"git clone ${downstreamUri} ${REPOSITORY_DIRECTORY}".execute().waitForProcessOutput()
-		inRepository "git remote add upstream ${upstreamUri}"
-	}
+    "git clone ${downstreamUri} ${REPOSITORY_DIRECTORY}".execute().waitForProcessOutput()
+    inRepository "git remote add upstream ${upstreamUri}"
+  }
 
-	def updateRemotes() {
-		logger.info "Updating upstream/master"
-		inRepository 'git fetch upstream master'
+  def updateRemotes() {
+    logger.info "Updating upstream/master"
+    inRepository 'git fetch upstream master'
 
-		logger.info "Updating origin/master"
-		inRepository 'git fetch origin master'
+    logger.info "Updating origin/master"
+    inRepository 'git fetch origin master'
 
-		inRepository 'git reset --hard origin/master'
-	}
+    inRepository 'git reset --hard origin/master'
+  }
 
-	def attemptMerge() {
-		logger.info "Attempting merge from upstream/master to origin/master"
-		inRepository('git merge upstream/master').exitValue() == 0
-	}
+  def attemptMerge() {
+    logger.info "Attempting merge from upstream/master to origin/master"
+    inRepository('git merge upstream/master').exitValue() == 0
+  }
 
-	def pushRepository() {
-		logger.info "Pushing origin/master"
-		inRepository 'git push origin master'
-	}
+  def pushRepository() {
+    logger.info "Pushing origin/master"
+    inRepository 'git push origin master'
+  }
 
-	def	sendFailureEmail() {
-		try {
-		restTemplate.postForEntity('https://{hostname}/api/mail.send.json' +
-									'?api_user={username}' +
-									'&api_key={password}' +
-									'&from={fromAddress}' +
-									'&to={toAddress}' +
-									'&subject={subject}' +
-									'&text={content}',
-									null, Map.class, [
-										'hostname' : hostname,
-										'username' : username,
-										'password' : password,
-										'fromAddress' : fromAddress,
-										'toAddress' : toAddress,
-										'subject' : 'Unable to merge upstream changes',
-										'content' : "An attempt to merge from ${sterilizeUri(upstreamUri)} to ${sterilizeUri(downstreamUri)} has failed.  This merge must be execuated manually."
-									])
-		} catch (Exception e) {
-			println e.getResponseBodyAsString()
-		}
-	}
+  def sendFailureEmail() {
+    def uriVariables = ['hostname' : hostname, 'username' : username, 'password' : password,
+                        'fromAddress' : fromAddress, 'toAddress' : toAddress,
+                        'subject' : 'Unable to merge upstream changes',
+                        'content' : "An attempt to merge from ${sterilizeUri(upstreamUri)} to " +
+                                    "${sterilizeUri(downstreamUri)} has failed.  This merge must be execuated " +
+                                    "manually."]
 
-	def sterilizeUri(s) {
-		def uri = new URI(s)
-		"${uri.scheme}://${uri.host}${uri.path}"
-	}
+    restTemplate.postForEntity('https://{hostname}/api/mail.send.json?api_user={username}&api_key={password}' +
+                               '&from={fromAddress}&to={toAddress}&subject={subject}&text={content}', null, Map.class,
+                               uriVariables)
+  }
 
-	def inRepository(command) {
-		def proc = command.execute(null, REPOSITORY_DIRECTORY)
-		proc.waitForProcessOutput()
+  def sterilizeUri(s) {
+    def uri = new URI(s)
+    "${uri.scheme}://${uri.host}${uri.path}"
+  }
 
-		proc
-	}
+  def inRepository(command) {
+    def proc = command.execute(null, REPOSITORY_DIRECTORY)
+    proc.waitForProcessOutput()
+
+    proc
+  }
 }

@@ -9,10 +9,10 @@ Since the application is designed to work in a PaaS environment, all configurati
 
 | Key | Description
 | --- | -----------
-| `DOWNSTREAM_URI` | The Git URI of the downstream repository.  **NOTE:** This URI can include credential information for private repositories.
 | `UPSTREAM_URI` | The Git URI of the upstream repository.  **NOTE:** This URI can include credential information for private repositories.
-| `TO_ADDRESS` | The email address to send failure notifications to
+| `DOWNSTREAM_URI` | The Git URI of the downstream repository.  **NOTE:** This URI can include credential information for private repositories.
 | `FROM_ADDRESS` | The email address to send failure notifications from
+| `TO_ADDRESS` | The email address to send failure notifications to
 
 
 ## Deployment
@@ -22,9 +22,10 @@ In order to automate the deployment process as much as possible, the project con
 
 ```bash
 cf push --no-start
-cf set-env auto-merge-upstream DOWNSTREAM_URI <value>
 cf set-env auto-merge-upstream UPSTREAM_URI <value>
-cf set-env auto-merge-upstream EMAIL_ADDRESS <value>
+cf set-env auto-merge-upstream DOWNSTREAM_URI <value>
+cf set-env auto-merge-upstream FROM_ADDRESS <value>
+cf set-env auto-merge-upstream TO_ADDRESS <value>
 cf start
 ```
 
