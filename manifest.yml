@@ -1,0 +1,12 @@
+---
+applications:
+- name: auto-merge-upstream
+  memory: 512M
+  instances: 1
+  path: .
+  services:
+    sendgrid:
+      label: sendgrid
+      provider: sendgrid
+      version: n/a
+      plan: free
