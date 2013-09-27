@@ -14,11 +14,10 @@
  * limitations under the License.
  */
 
-import groovy.json.JsonSlurper
 import org.slf4j.LoggerFactory
 import org.springframework.web.client.RestTemplate
 
-@Grab(group='org.codehaus.groovy', module='groovy-json', version='2.1.7')
+@Grab(group='org.springframework.boot', module='spring-boot-starter-actuator', version='0.5.0.M4')
 @Controller
 class AutoMergeUpstream {
 
@@ -28,33 +27,26 @@ class AutoMergeUpstream {
 
   def restTemplate = new RestTemplate()
 
-  @Value('${DOWNSTREAM_URI}')
+  @Value('${downstream.uri}')
   def downstreamUri
 
-  @Value('${UPSTREAM_URI}')
+  @Value('${upstream.uri}')
   def upstreamUri
 
-  @Value('${FROM_ADDRESS}')
+  @Value('${from.address}')
   def fromAddress
 
-  @Value('${TO_ADDRESS}')
+  @Value('${to.address}')
   def toAddress
 
+  @Value('${vcap.services.sendgrid.credentials.hostname}')
   def hostname
 
+  @Value('${vcap.services.sendgrid.credentials.username}')
   def username
 
+  @Value('${vcap.services.sendgrid.credentials.password}')
   def password
-
-  @Autowired
-  AutoMergeUpstream(@Value('${VCAP_SERVICES}') String services) {
-    def configuration =  new JsonSlurper().parseText(services)
-      .find { it ==~ /^sendgrid.*$/ }.value[0]['credentials']
-
-    hostname = configuration['hostname']
-    username = configuration['username']
-    password = configuration['password']
-  }
 
   @RequestMapping(method = RequestMethod.POST, value = '/')
   ResponseEntity<Void> webhook() {
