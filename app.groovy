@@ -68,38 +68,43 @@ class AutoMergeUpstream {
       sendFailureEmail()
     }
 
-    logger.info 'Auto-merge complete'
+    logger.info('Auto-merge complete')
   }
 
   def cloneRepository() {
-    logger.info "Cloning ${sterilizeUri(downstreamUri)}"
+    logger.info('Creating repository')
 
-    "git clone ${downstreamUri} ${REPOSITORY_DIRECTORY}".execute().waitForProcessOutput()
-    inRepository "git remote add upstream ${upstreamUri}"
+    REPOSITORY_DIRECTORY.mkdirs()
+
+    inRepository(['git', 'init'])
+    inRepository(['git', 'config', 'user.email', fromAddress])
+    inRepository(['git', 'config', 'user.name', 'Auto Merge Upstream'])
+    inRepository(['git', 'remote', 'add', 'upstream', upstreamUri])
+    inRepository(['git', 'remote', 'add', 'downstream', downstreamUri])
   }
 
   def updateRemotes() {
-    logger.info 'pdating upstream/master'
-    inRepository 'git fetch upstream master'
+    logger.info('Updating upstream')
+    inRepository(['git', 'fetch', '-u', 'upstream'])
 
-    logger.info 'Updating origin/master'
-    inRepository 'git fetch origin master'
+    logger.info('Updating downstream')
+    inRepository(['git', 'fetch', '-u', 'downstream'])
 
-    inRepository 'git reset --hard origin/master'
+    inRepository(['git', 'reset', '--hard', 'downstream/master'])
   }
 
   def attemptMerge() {
-    logger.info 'Attempting merge from upstream/master to origin/master'
-    inRepository('git merge upstream/master').exitValue() == 0
+    logger.info('Attempting merge from upstream/master to downstream/master')
+    inRepository(['git', 'merge', 'upstream/master']).exitValue() == 0
   }
 
   def pushRepository() {
-    logger.info 'Pushing origin/master'
-    inRepository 'git push origin master'
+    logger.info('Pushing downstream/master')
+    inRepository(['git', 'push', 'downstream', 'master'])
   }
 
   def sendFailureEmail() {
-    logger.info "Sending failure email to ${toAddress}"
+    logger.info("Sending failure email to ${toAddress}")
 
     def uriVariables = ['hostname' : hostname, 'username' : username, 'password' : password,
                         'fromAddress' : fromAddress, 'toAddress' : toAddress,
@@ -120,11 +125,11 @@ class AutoMergeUpstream {
 
   def inRepository(command) {
     def proc = command.execute(null, REPOSITORY_DIRECTORY)
-    proc.waitForProcessOutput()
+    proc.waitFor()
 
     if (proc.exitValue() != 0) {
-      logger.warn proc.in.text
-      logger.warn proc.err.text
+      logger.error("stdout: {}", proc.in.text)
+      logger.error("stderr: {}", proc.err.text)
     }
 
     proc
