@@ -79,26 +79,28 @@ class AutoMergeUpstream {
   }
 
   def updateRemotes() {
-    logger.info "Updating upstream/master"
+    logger.info 'pdating upstream/master'
     inRepository 'git fetch upstream master'
 
-    logger.info "Updating origin/master"
+    logger.info 'Updating origin/master'
     inRepository 'git fetch origin master'
 
     inRepository 'git reset --hard origin/master'
   }
 
   def attemptMerge() {
-    logger.info "Attempting merge from upstream/master to origin/master"
+    logger.info 'Attempting merge from upstream/master to origin/master'
     inRepository('git merge upstream/master').exitValue() == 0
   }
 
   def pushRepository() {
-    logger.info "Pushing origin/master"
+    logger.info 'Pushing origin/master'
     inRepository 'git push origin master'
   }
 
   def sendFailureEmail() {
+    logger.info "Sending failure email to ${toAddress}"
+
     def uriVariables = ['hostname' : hostname, 'username' : username, 'password' : password,
                         'fromAddress' : fromAddress, 'toAddress' : toAddress,
                         'subject' : 'Unable to merge upstream changes',
@@ -119,6 +121,11 @@ class AutoMergeUpstream {
   def inRepository(command) {
     def proc = command.execute(null, REPOSITORY_DIRECTORY)
     proc.waitForProcessOutput()
+
+    if (proc.exitValue() != 0) {
+      logger.warn proc.in.text
+      logger.warn proc.err.text
+    }
 
     proc
   }
