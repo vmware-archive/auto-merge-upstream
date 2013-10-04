@@ -110,7 +110,7 @@ class AutoMergeUpstream {
                         'fromAddress' : fromAddress, 'toAddress' : toAddress,
                         'subject' : 'Unable to merge upstream changes',
                         'content' : "An attempt to merge from ${sterilizeUri(upstreamUri)} to " +
-                                    "${sterilizeUri(downstreamUri)} has failed.  This merge must be execuated " +
+                                    "${sterilizeUri(downstreamUri)} has failed.  This merge must be executed " +
                                     "manually."]
 
     restTemplate.postForEntity('https://{hostname}/api/mail.send.json?api_user={username}&api_key={password}' +
