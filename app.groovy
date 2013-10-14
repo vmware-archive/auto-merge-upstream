@@ -17,7 +17,7 @@
 import org.slf4j.LoggerFactory
 import org.springframework.web.client.RestTemplate
 
-@Grab(group='org.springframework.boot', module='spring-boot-starter-actuator', version='0.5.0.M4')
+@Grab('spring-boot-starter-actuator')
 @Controller
 class AutoMergeUpstream {
 
