@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
+import com.github.sendgrid.SendGrid
 import org.slf4j.LoggerFactory
-import org.springframework.web.client.RestTemplate
 
+@Grab('com.sendgrid:sendgrid-java:0.1.2')
 @Grab('spring-boot-starter-actuator')
 @Controller
 class AutoMergeUpstream {
@@ -24,8 +25,6 @@ class AutoMergeUpstream {
   def REPOSITORY_DIRECTORY = new File(System.getProperty('java.io.tmpdir'), 'repo')
 
   def logger = LoggerFactory.getLogger(this.getClass())
-
-  def restTemplate = new RestTemplate()
 
   @Value('${downstream.uri}')
   def downstreamUri
@@ -38,9 +37,6 @@ class AutoMergeUpstream {
 
   @Value('${to.address}')
   def toAddress
-
-  @Value('${vcap.services.sendgrid.credentials.hostname}')
-  def hostname
 
   @Value('${vcap.services.sendgrid.credentials.username}')
   def username
@@ -106,16 +102,13 @@ class AutoMergeUpstream {
   def sendFailureEmail() {
     logger.info("Sending failure email to ${toAddress}")
 
-    def uriVariables = ['hostname' : hostname, 'username' : username, 'password' : password,
-                        'fromAddress' : fromAddress, 'toAddress' : toAddress,
-                        'subject' : 'Unable to merge upstream changes',
-                        'content' : "An attempt to merge from ${sterilizeUri(upstreamUri)} to " +
-                                    "${sterilizeUri(downstreamUri)} has failed.  This merge must be executed " +
-                                    "manually."]
-
-    restTemplate.postForEntity('https://{hostname}/api/mail.send.json?api_user={username}&api_key={password}' +
-                               '&from={fromAddress}&to={toAddress}&subject={subject}&text={content}', null, Map.class,
-                               uriVariables)
+    def sendGrid = new SendGrid(username, password)
+    sendGrid.setFrom(fromAddress)
+    sendGrid.addTo(toAddress)
+    sendGrid.setSubject('Unable to merge upstream changes')
+    sendGrid.setText("An attempt to merge from ${sterilizeUri(upstreamUri)} to ${sterilizeUri(downstreamUri)} has " +
+                     'failed.  This merge must be executed manually.')
+    sendGrid.send()
   }
 
   def sterilizeUri(s) {
