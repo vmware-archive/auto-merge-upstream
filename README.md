@@ -34,7 +34,7 @@ cf start
 The project is released under version 2.0 of the [Apache License][].
 
 [Apache License]: http://www.apache.org/licenses/LICENSE-2.0
-[Cloud Foundry]: http://run.pivotal.io
-[cloud-foundry-account]: http://docs.cloudfoundry.com/docs/dotcom/getting-started.html#signup
-[installed the `cf` command line tool]: http://docs.cloudfoundry.com/docs/dotcom/getting-started.html#install-cf
+[Cloud Foundry]: https://run.pivotal.io
+[cloud-foundry-account]: https://docs.cloudfoundry.com/docs/dotcom/getting-started.html#signup
+[installed the `cf` command line tool]: https://docs.cloudfoundry.com/docs/dotcom/getting-started.html#install-cf
 [manifest]: manifest.yml
